@@ -81,6 +81,12 @@ if(ARGOS_BUILD_FOR_SIMULATOR)
   target_link_libraries(clustering argos3plugin_simulator_kilolib)
 
   #
+  # ARK loop function: pcod
+  #
+  add_executable(pcod pcod.c)  
+  target_link_libraries(pcod argos3plugin_simulator_kilolib)
+
+  #
   # Debugging example
   #
   add_executable(test_debug test_debug.h test_debug.c)

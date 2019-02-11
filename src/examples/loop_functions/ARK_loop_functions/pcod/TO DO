@@ -1,0 +1,5 @@
+Update the PCOD.h PCOD.cpp files with the new implementation of RK4. Done.
+
+Check what are the differences between the implementations for behavior and control. 
+They seem to be "almost the same". However, the controller results in robots moving faster.
+
