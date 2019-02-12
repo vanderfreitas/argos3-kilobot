@@ -263,12 +263,13 @@ void CALF::UpdateVirtualSensors(){
 	for(UInt16 it=0;it< m_tKilobotsEntities.size();it++){
 		pcod_model.particles[it].theta = GetKilobotOrientation(*m_tKilobotsEntities[it]).GetValue() + half_pi;
 
+        // Heading angle transformation is necessary
 		if(pcod_model.particles[it].theta < 0.0)
 			pcod_model.particles[it].theta += two_pi;
 		else if(pcod_model.particles[it].theta > two_pi)
 			pcod_model.particles[it].theta -= two_pi;
 
-		// Coordinate transformation is necessary *
+		// Coordinate transformation is necessary
 		CVector2 cKilobotPosition;
 		cKilobotPosition=GetKilobotPosition(*m_tKilobotsEntities[it]);
 		pcod_model.particles[it].r_x = -cKilobotPosition.GetY();
@@ -305,11 +306,11 @@ void CALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity){
     else{
         /*  Prepare the inividual kilobot's message */
         tKilobotMessage.m_sID = unKilobotID;
-	tKilobotMessage.m_sData = pcod_model.d_theta[unKilobotID];
-	tKilobotMessage.m_sType = 0;
+        tKilobotMessage.m_sData = pcod_model.d_theta[unKilobotID];
+        tKilobotMessage.m_sType = 0;
 
-	if(pcod_model.d_theta[unKilobotID] < 0)
-		tKilobotMessage.m_sType = 1;
+    	if(pcod_model.d_theta[unKilobotID] < 0)
+    		tKilobotMessage.m_sType = 1;
 
         /*  Set the message sending flag to True */
         bMessageToSend=true;
@@ -325,24 +326,24 @@ void CALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity){
         }
 
         m_tMessages[unKilobotID].data[0] = tKilobotMessage.m_sID;
-	m_tMessages[unKilobotID].data[1] = tKilobotMessage.m_sType;
+    	m_tMessages[unKilobotID].data[1] = tKilobotMessage.m_sType;
 
 
-	// Sending only num_digits most significant digits of the phase
-	int num_digits=5;
-	long long temp= fabs(pcod_model.d_theta[unKilobotID])*pow(10,num_digits-1);
-	int rem;
-	
+    	// Sending only num_digits most significant digits of the phase
+    	int num_digits=5;
+    	long long temp= fabs(pcod_model.d_theta[unKilobotID])*pow(10,num_digits-1);
+    	int rem;
+    	
 
-	for(int i=2; i<num_digits+2; ++i){
-		//remainder of the temp value
-		rem=temp%10;
-		temp=temp/10;
+    	for(int i=2; i<num_digits+2; ++i){
+    		//remainder of the temp value
+    		rem=temp%10;
+    		temp=temp/10;
 
-		m_tMessages[unKilobotID].data[num_digits + 3 - i] = rem;
-	}
+    		m_tMessages[unKilobotID].data[num_digits + 3 - i] = rem;
+    	}
 
-	//printf("Sending: %f\n", m_fTimeInSeconds);
+    	//printf("Sending: %f\n", m_fTimeInSeconds);
 
         /* Sending the message */
         GetSimulator().GetMedium<CKilobotCommunicationMedium>("kilocomm").SendOHCMessageTo(c_kilobot_entity,&m_tMessages[unKilobotID]);
