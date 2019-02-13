@@ -285,13 +285,21 @@ void CALF::UpdateVirtualSensors(){
 
 
 
+UInt8 convert_double_to_UInt8_(double angle, int num_digits){
+    long temp= fabs(angle*pow(10,num_digits-1));
+
+    if(temp > 1023)
+        temp = 1023;
+
+    return temp;
+}
 
 
 
 void CALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity){
 
     /*Create ARK-type messages variables*/
-    m_tALFKilobotMessage tKilobotMessage;
+    m_tALFKilobotMessage tKilobotMessage,tEmptyMessage,tMessage;
 
     /* Flag for existance of message to send*/
     bool bMessageToSend=false;
@@ -306,11 +314,22 @@ void CALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity){
     else{
         /*  Prepare the inividual kilobot's message */
         tKilobotMessage.m_sID = unKilobotID;
-        tKilobotMessage.m_sData = pcod_model.d_theta[unKilobotID];
-        tKilobotMessage.m_sType = 0;
 
-    	if(pcod_model.d_theta[unKilobotID] < 0)
-    		tKilobotMessage.m_sType = 1;
+        // Convert the angle derivative (double) into a integer of 4 digits. 
+        // Since the payload is composed of one type of 4 bits and a payload (data) of 10 bits, 
+        // we pack one digit in the type and the other 3 in the payload
+
+        // First digit
+        tKilobotMessage.m_sType = fabs(pcod_model.d_theta[unKilobotID]*pow(10,0)); 
+
+        // Next 3 digits
+        long next_3_digits = fabs(pcod_model.d_theta[unKilobotID]*pow(10,3)); 
+        next_3_digits = next_3_digits % (int)pow(10,3);
+        tKilobotMessage.m_sData = next_3_digits;
+
+        // The problem that arise here is the sign of the theta derivative. It depends on the omega parameter and its sign follow it accordingly.
+        // One strategy would be to let the robot know it already from the beginning of the simulation, since one cannot send it all the time.
+
 
         /*  Set the message sending flag to True */
         bMessageToSend=true;
@@ -325,25 +344,27 @@ void CALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity){
             m_tMessages[unKilobotID].data[i]=0;
         }
 
-        m_tMessages[unKilobotID].data[0] = tKilobotMessage.m_sID;
-    	m_tMessages[unKilobotID].data[1] = tKilobotMessage.m_sType;
+        m_tMessages[unKilobotID].type = 0;
+        // Prepare an empty ARK-type message to fill the gap in the full kilobot message
+        tEmptyMessage.m_sID=1023;
+        tEmptyMessage.m_sType=0;
+        tEmptyMessage.m_sData=0;
 
+        // Fill the kilobot message by the ARK-type messages
+        for (int i = 0; i < 3; ++i) {
 
-    	// Sending only num_digits most significant digits of the phase
-    	int num_digits=5;
-    	long long temp= fabs(pcod_model.d_theta[unKilobotID])*pow(10,num_digits-1);
-    	int rem;
-    	
+            if(i==0){
+                tMessage=tKilobotMessage;
+            } else{
+                tMessage=tEmptyMessage;
+            }
 
-    	for(int i=2; i<num_digits+2; ++i){
-    		//remainder of the temp value
-    		rem=temp%10;
-    		temp=temp/10;
-
-    		m_tMessages[unKilobotID].data[num_digits + 3 - i] = rem;
-    	}
-
-    	//printf("Sending: %f\n", m_fTimeInSeconds);
+            m_tMessages[unKilobotID].data[i*3] = (tMessage.m_sID >> 2);
+            m_tMessages[unKilobotID].data[1+i*3] = (tMessage.m_sID << 6);
+            m_tMessages[unKilobotID].data[1+i*3] = m_tMessages[unKilobotID].data[1+i*3] | (tMessage.m_sType << 2);
+            m_tMessages[unKilobotID].data[1+i*3] = m_tMessages[unKilobotID].data[1+i*3] | (tMessage.m_sData >> 8);
+            m_tMessages[unKilobotID].data[2+i*3] = tMessage.m_sData;
+        }
 
         /* Sending the message */
         GetSimulator().GetMedium<CKilobotCommunicationMedium>("kilocomm").SendOHCMessageTo(c_kilobot_entity,&m_tMessages[unKilobotID]);

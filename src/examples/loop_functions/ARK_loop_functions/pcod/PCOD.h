@@ -33,12 +33,24 @@
 
 #define NR_END 1
 #define FREE_ARG char*
-//#define NE 3
 
+
+#define Pi_2  2.0*M_PI
 
 using namespace std;
 
 
+
+class particle_{
+
+public:
+	double r_x; // coordinates
+	double r_y;
+	double theta; // Heading angle and phase
+	double w; // natural frequency
+	int id;
+
+};
 
 
 
@@ -50,92 +62,84 @@ class PCOD{
 
 	
 public:
-	struct particle_{
-		double r_x;
-		double r_y;
-		double c_x;
-		double c_y;
-		double theta;
-		double w;
-		int id;
-	};
 
+	// PCOD class constructor
+	PCOD(int N_, double M_, double omega0_, double h_);
+	PCOD();
 
-	float ran1(long *idum_);
-
+	// Initializer
 	void init(int N_, double M_, double omega0_, double h_);
+
+	// Random number generator
+	float ran1(long *idum_);
+	// Random number generator Seed
+	long idum{-98667};
+
+	// Integrate model for time dt
 	void step_forward();
+
+	// Finished the model and deallocate all structures
 	void destroy();
 
+	// Each tick corresponds to a period of time dt
 	int get_ticks();
 
+	// Current time (seconds)
+	double get_t();
 
+	// Integration time dt
+	double get_h();
+
+
+	// Public access attributes --- Ok, It is not a good idea, but let's do it for now =)
 	particle_ *particles;
-	std::vector<double> d_theta;
-
-	double K = 0.1;
-
-	
-
-private:
-	
+	double *d_theta;
 
 
-	// Numerical integration
+protected:
+
+	// ---------- RK4 methods from Numerical Recipes ------------
 	void nrerror(char error_text[]);
-	void derivs(double *y,double *df, particle_ *particles);
+	void derivs(double y[],double df[]);
 	double *dvector(long nl,long nh);
 	void free_dvector(double *v, long nl, long nh);
+	// --------------------------------------------------
+
+	// ----------- RK4 attributes ------------------------------
+	double h=0.1;
+	double tf = 5000.0;
+	double t;
+	int it;
+	double *x, *a, *b, *c,*df,*y;
+	//----------------------------------------------------------
+	
 
 
-	// Model
+
+	// ---------- PCOD model methods ------------
 	void projectionMatrix();
 	complex<double> scalar_product(double *v1, complex<double> *v2);
 	double *matrix_line(double *matrix, int l);
-	void rotation_center(double *state, particle_ *particles);
-	double distance_particles(particle_ *particles, int id1, int id2);
+	void rotation_center(double *state);
+	double uk_circular_symmetric_paley_all_to_all(double state[], double theta, int id);
+	// ------------------------------------------
 
-	double uk_circular_symmetric_paley_all_to_all(particle_ *particles, double *state, double theta, int id);
-	//double uk_Kuramoto(std::vector<particle_> particles, double theta, int id);
-
-
-	
-
-	// Random number generation Seed
-	long idum{-986967};
-
-
-	// --- Runge-Kutta 4th order --------
-	double h=0.01;
-	double tf = 2000.0;
-
-	double t;
-	int it;
-
-	
-	double *x, *a, *b, *c,*df,*y;
-	double Pi_2 = 2.0*M_PI; 
-	//-----------------------------------
-
-
-	// ----- Model parameters ------------
-	int N = 12;
-	double M = 3;
-
-	int NE = 36;
-
-	double K_m = 0.18;
-	double K_M = -0.02;
-
-	
-	double K0 = 0.1;
-	double omega0 = 0.05; //0.05;
-
+	// ----------- PCOD model attributes -----------
 	double *P;
 	complex<double> *cc;
+	// --------------------------------------------
 
-	// -----------------------------------
 
+
+	// ----- PCOD model parameters ------------
+	int N = 12;
+	double M = 3;
+	int NE = 36;
+	double K_m = 0.18;
+	double K_M = -0.02;
+	double K = 0.1;
+	double K0 = 0.1;
+	double omega0 = 0.05;
 };
 
 

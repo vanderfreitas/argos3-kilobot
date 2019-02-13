@@ -48,8 +48,8 @@
             dataacquisitionfrequency="100"
             environmentplotupdatefrequency="10"
             timeforonemessage="0.05"
-	    		M="3"
-	    		omega0="1.0">
+	    	M="3"
+	    	omega0="1.0">
         </variables>
     
         <environments>

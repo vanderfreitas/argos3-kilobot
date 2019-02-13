@@ -14,7 +14,7 @@
 #define RIGHT 3
 
 int left, right;
-double omega0;
+double omega0 = 1.0;
 
 double d_theta=1.0;
 double vr, vl;
@@ -76,7 +76,7 @@ void set_motion(int new_motion)
 }
 
 
-
+/*
 void set_omega(double omega){
 
 	// (pi / 4) rad/s is the configured angular speed.
@@ -84,18 +84,15 @@ void set_omega(double omega){
 	// The omega (argument) is the increment in the heading direction.
 	// The robot must turn (left or right) for a certain period, until the increment is properly added.
 	double angular_vel = (omega / pi_over_4);
-	
-	//int leftover;
-
 
 	// After every turn, the particle must move straight for 10s.
-
 
 	if(omega > 0){
 
 		set_motion(LEFT);
 		//if(kilo_uid == 0)
 		//	printf("kilot_ticks=%d  Turning time=%f \n", kilo_ticks, angular_vel * 1000);
+
 		delay(angular_vel * 1000);
 		//leftover = 1000 - fabs(angular_vel) * 1000;
 
@@ -128,92 +125,99 @@ void set_omega(double omega){
 
 	}
 
-	//printf("angular_vel=%f \n", angular_vel);
+}*/
+
+
+void set_omega(double omega){
+
+	// (pi / 4) rad/s is the configured angular speed.
+	// It means that when the robot is told to turn left, it will do so at (pi / 4) rad/s
+	// The omega (argument) is the increment in the heading direction.
+	// The robot must turn (left or right) for a certain period, until the increment is properly added.
+	double angular_vel = fabs(omega / pi_over_4);
+
+	// After every turn, the particle must move straight for 10s.
+
+	if(omega > 0){
+
+		set_motion(LEFT);
+		delay(angular_vel * 1000);
+
+		set_motion(FORWARD);
+		delay(10000*4);
+		delay(10000*4);
+
+		current_motion = LEFT;
+
+	}else if( omega < 0){
+		set_motion(RIGHT);
+		delay(angular_vel * 1000);
+		//leftover = 1000 - fabs(angular_vel) * 1000;
+
+		set_motion(FORWARD);
+		delay(10000*4);
+		delay(10000*4);
+
+		current_motion = RIGHT;
+
+	}else{
+		set_motion(current_motion);
+		delay(angular_vel * 1000);
+
+		//leftover = 1000 - fabs(angular_vel) * 1000;
+
+		set_motion(FORWARD);
+		delay(10000*4);
+		delay(10000*4);
+
+	}
 
 }
-
-
-
 
 
 /*-------------------------------------------------------------------*/
 /* Callback function for message reception                           */
 /*-------------------------------------------------------------------*/
 void rx_message(message_t *msg, distance_measurement_t *d) {
+	if (msg->type == 0) {
+        // unpack message
+        int id1 = msg->data[0] << 2 | (msg->data[1] >> 6);
+        int id2 = msg->data[3] << 2 | (msg->data[4] >> 6);
+        int id3 = msg->data[6] << 2 | (msg->data[7] >> 6);
+        if (id1 == kilo_uid) {
+            // unpack type
+            sa_type = msg->data[1] >> 2 & 0x0F;
+            // unpack payload
+            sa_payload = ((msg->data[1]&0b11) << 8) | (msg->data[2]);
+            new_sa_msg = true;
+        }
+        if (id2 == kilo_uid) {
+            // unpack type
+            sa_type = msg->data[4] >> 2 & 0x0F;
+            // unpack payload
+            sa_payload = ((msg->data[4]&0b11)  << 8) | (msg->data[5]);
+            new_sa_msg = true;
+        }
+        if (id3 == kilo_uid) {
+            // unpack type
+            sa_type = msg->data[7] >> 2 & 0x0F;
+            // unpack payload
+            sa_payload = ((msg->data[7]&0b11)  << 8) | (msg->data[8]);
+            new_sa_msg = true;
+        }
 
-	//new_sa_msg = true;
+        // d_theta will receive 4 digits in total.
+        // The first digit comes from sa_type and the remaining 3 from sa_payload.
+		d_theta = (double)sa_type; 
+		d_theta += (double)sa_payload  * pow(10,-3);
 
-	// unpack message
-	sa_type = msg->data[1];  // Signal : positive 0, negative 1
-
-	int temp=0;
-	int num_digits=5;
-
-
-	// Retrieving digits ----
-	for(int i=2; i<num_digits+3; ++i){
-		temp = temp * 10;
-		temp += msg->data[i];
-	}
-
-	d_theta = (double)temp * pow(10,-(num_digits));
-	
-	// Check whether d_theta is negative, through the sa_type variable
-	if(sa_type == 1)
-		d_theta = d_theta * (-1.0);
-
-
-	
-
-	//printf("%f \n", d_theta);
-
-	/*
-
-	//if(sa_type == 1){
-	//	printf("TYPE 1! \n");
-	//	d_theta = d_theta * (1.0);
-	//}
-
-	
-
-	// II) Considering (vr + vl) / 2 = v
-	//vr = ( ( (0.033 * d_theta * dt  )  / 2.0 ) + v ) ;
-	//vl = ( 2.0*v - ( ( (0.033 * d_theta * dt )  / 2.0 ) + v ) );
-	
-
-	// I) Considering vr + vl = v
-	vr = ( (0.033 * d_theta * dt + v)  / 2.0  ) ;
-	vl = ( v -  (0.033 * d_theta * dt + v )  / 2.0   ) ;
-
-	
-	// Update angular velocity
-	
-
-	// Negative d_theta
-	if(sa_type == 1){
-		left = (vr * speed); //kilo_turn_right; //kilo_straight_right;
-		right = (vl * speed);
-		d_theta = d_theta * (1.0);
-	}else{
-		left = (vl * speed); //kilo_turn_right; //kilo_straight_right;
-		right = (vr * speed); // kilo_turn_left; // kilo_straight_left;
-	}
-	
-
-	//printf("ticks: %d   d_th: %f  left: %d  vr: %d \n", kilo_ticks, d_theta, left, right);
-
-	//if(abs(left - right) < 10)
-	//printf("IN: %d , %d: dthetaaa=%f  l=%d  r=%d\n", kilo_uid, kilo_ticks, d_theta,left,right);
-
-	spinup_motors();
-	set_motors(left, right);
-
-	new_sa_msg = false;*/
-
+		if(omega0 < 0)
+			d_theta *= -1.0;
+		
+		if(kilo_uid == 0)
+			printf("PCOD: %f  ticks: %d\n", d_theta, kilo_ticks);
+    }
 }
-
-
-
 
 
 /*-------------------------------------------------------------------*/
@@ -234,59 +238,13 @@ void setup()
 /* Main loop                                                         */
 /*-------------------------------------------------------------------*/
 void loop() {
+	//printf("LOOP %d\n", kilo_ticks);
+
 	set_omega(d_theta);
-	//printf("omega=%f \n", d_theta); 
+	//set_motion(FORWARD);
+
 }
 
-
-/*void loop() {
-	//printf("OUT: %d , %d: dthetaaa=%f  l=%d  r=%d\n", kilo_uid, kilo_ticks, d_theta,left,right);
-	//set_motors(left,right);
-
-	//d_theta = 2.0;
-
-	// I) Considering vr + vl = v
-	//vl = ( (0.033 * d_theta * dt + v)  / 2.0  ) ;
-	//vr = ( v -  (0.033 * d_theta * dt + v )  / 2.0   ) ;
-
-	// II) Considering (vr + vl) / 2 = v
-	//vr = ( ( (0.033 * d_theta * dt  )  / 2.0 ) + v ) ;
-	//vl = ( 2.0*v - ( ( (0.033 * d_theta * dt )  / 2.0 ) + v ) );
-
-
-	//d_theta = 1.0;
-
-	// III) From Coursera - Control of Mobile Robots
-	double R = 1.0; //  Wheel radius = 0.001..   kilobot diameter = 0.033.. Distance between legs = 0.025
-	vr = (2.0*v + d_theta*dt * 0.025) / (2.0 * R);
-	vl = (2.0*v - d_theta*dt * 0.025) / (2.0 * R);
-
-	//vr *= 0.001;
-	//vl *= 0.001;
-
-	//vr = vr / 1000.0;
-	//vl = vl / 1000.0;
-
-	
-
-	// The duty-cycle is assigned in the interval [0,255], which means that 1 percent equals DC=2.5.
-	double factor = 25.5;
-
-	uint8_t left = vl*speed;
-	uint8_t right = vr*speed;
-
-
-	printf("ticks: %d  d_theta=%f  vl=%f   vr=%f  m_l=%d  m_r=%d \n", kilo_ticks, d_theta, vl, vr, left, right);
-
-	spinup_motors();
-
-	//set_motors(left,right);
-	set_motors(right,left); // I inverted because this is how this set_motors works
-	
-	//set_motors(vl*kilo_straight_right,vr*kilo_straight_left);
-	//set_motors(vl*speed,vr*speed);
-	//set_motors(vl,vr);
-}*/
 
 int main()
 {

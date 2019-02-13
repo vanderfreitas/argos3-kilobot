@@ -2,8 +2,6 @@
 
 
 
-double v = 0.01;
-
 
 // ------------- Random number generator -----------------------------------
 
@@ -49,7 +47,9 @@ float PCOD::ran1(long *idum_){
 
 
 
-// ------------------- MODEL ---------------------------
+// ------------------- PCOD MODEL ---------------------------------------------
+
+// Create the all-to-all projection matrix P = L / N, for L is the graph Laplacian.
 void PCOD::projectionMatrix(){
 
 	P = new double[N*N];
@@ -69,8 +69,6 @@ void PCOD::projectionMatrix(){
 	}
 }
 
-
-
 complex<double> PCOD::scalar_product(double *v1, complex<double> *v2){
 	complex<double> dot = 0.0;
 
@@ -81,6 +79,7 @@ complex<double> PCOD::scalar_product(double *v1, complex<double> *v2){
 	return dot;
 }
 
+// Get the line l of the Projection matrix
 double *PCOD::matrix_line(double *matrix, int l){
 	double *Pk = new double[N];
 
@@ -91,9 +90,8 @@ double *PCOD::matrix_line(double *matrix, int l){
 	return Pk;
 }
 
-
-
-void PCOD::rotation_center(double *state, particle_ *particles){
+// Compute the rotation center c_k of particle k
+void PCOD::rotation_center(double *state){
 
 	double r_x, r_y, theta;
 	
@@ -105,11 +103,8 @@ void PCOD::rotation_center(double *state, particle_ *particles){
 		r_y = state[i+3];
 		
 		complex<double> rk(r_x,r_y);
-		//std::cout << "rk: " << rk << std::endl;
 		complex<double> vel(cos(theta),sin(theta));
-		//std::cout << "vel: " << vel << std::endl;
 		complex<double> ck( std::real(rk)- (std::imag(vel)/ particles[index_c].w), std::imag(rk) + ( std::real(vel) / particles[index_c].w));
-		//std::cout << "ck: " << ck << std::endl;
 
 		cc[index_c] = ck;
 
@@ -117,38 +112,7 @@ void PCOD::rotation_center(double *state, particle_ *particles){
 	}
 }
 
-
-double PCOD::distance_particles(particle_ *particles, int id1, int id2){
-	double d = 0.0;
-	
-	d = sqrt( (particles[id1].r_x - particles[id2].r_x) * (particles[id1].r_x - particles[id2].r_x) + 
-	    (particles[id1].r_y - particles[id2].r_y) * (particles[id1].r_y - particles[id2].r_y) );
-
-	return d;
-}
-
-
-
-/*double PCOD::uk_Kuramoto(std::vector<particle_> particles, double theta, int id){
-	
-	double potential_derivative = 0.0;
-	double theta_j=0.0;
-	
-	for(int j=0; j<N; ++j){
-		theta_j = particles[j].theta;
-		potential_derivative += sin( theta_j - theta );	
-	}		
-
-	potential_derivative = potential_derivative / double(N);
-
-	double ukk = particles[id].w - potential_derivative;
-
-	return ukk;
-}*/
-
-
-
-double PCOD::uk_circular_symmetric_paley_all_to_all(particle_ *particles, double *state, double theta, int id){
+double PCOD::uk_circular_symmetric_paley_all_to_all(double state[], double theta, int id){
 
 	double *Pk = matrix_line(P, id);
 
@@ -159,13 +123,15 @@ double PCOD::uk_circular_symmetric_paley_all_to_all(particle_ *particles, double
 	double Km = 0.0;
 	double theta_j=0.0;
 	
-	for(int m=1; m<M+1; ++m){
+	int m,j;	
+
+	for(m=1; m<M+1; ++m){
 		if(m == M)
 			Km = K_M;
 		else
 			Km = K_m;
 		
-		for(int j=1; j<=NE; j+=3){
+		for(j=1; j<=NE; j+=3){
 			theta_j = state[j];
 			potential_derivative += (Km/double(m)) * sin(double(m) * ( theta_j - theta ));	
 		}		
@@ -180,11 +146,9 @@ double PCOD::uk_circular_symmetric_paley_all_to_all(particle_ *particles, double
 
 	return ukk;
 }
+// ------------------------ END PCOD MODEL --------------------------------------
 
 
-
-
-// ------------------------ END MODEL --------------------------------------
 
 
 
@@ -200,20 +164,19 @@ void PCOD::nrerror(char error_text[]){
 	exit(1);
 }
 
+void PCOD::derivs(double y[],double df[]){
 
+	int index=0, i;
 
-void PCOD::derivs(double *y, double *df, particle_ *particles){
-	// Rotation centers
-	rotation_center(y, particles);
+	rotation_center(y);
 
-	int index=0;
-	for(int i=1; i<=NE; i+=3){
-		df[i]=uk_circular_symmetric_paley_all_to_all(particles, y, y[i], index);
+	for(i=1; i<=NE; i+=3){
+		df[i]=uk_circular_symmetric_paley_all_to_all(y, y[i], index);
 		df[i+1]=cos(y[i]);
 		df[i+2]=sin(y[i]);
 
 		++index;
-	}
+	}	
 }
 
 double *PCOD::dvector(long nl,long nh){
@@ -223,17 +186,16 @@ double *PCOD::dvector(long nl,long nh){
 	return v-nl+NR_END;
 }
 
-
 void PCOD::free_dvector(double *v, long nl, long nh){
 	free((FREE_ARG) (v+nl-NR_END));
 }
 // --------------------------------------------------------------------
 
 
-int PCOD::get_ticks(){
-	return it;
-}
 
+PCOD::PCOD(){
+
+};
 
 
 void PCOD::init(int N_, double M_, double omega0_, double h_){
@@ -251,7 +213,7 @@ void PCOD::init(int N_, double M_, double omega0_, double h_){
 
 	K = 0.3;
 
-	particles = new particle_[N]; // (particle_ *)malloc((size_t) ((N_)*sizeof(particle_)));
+	particles = new particle_[N];
 
 	y=dvector(1,NE+2);
 	df=dvector(1,NE+2);
@@ -264,13 +226,16 @@ void PCOD::init(int N_, double M_, double omega0_, double h_){
 	for(i=1; i<=NE; ++i)
 		x[i] = 1;
 
+
 	t=0.0;
 	it=0;
 
-	double box_side = 15.0; //4.0*sqrt(double(N)*M_PI); //1.0/(3.0*omega0);
+	double box_side = 15.0; 
 
 	cc = new complex<double>[N];
 	projectionMatrix();
+	d_theta = new double[N];
+
 	
 	// Initial conditions
 	for(i=0; i<N; ++i){
@@ -290,23 +255,30 @@ void PCOD::init(int N_, double M_, double omega0_, double h_){
 		else
 			particles[i].r_y = -ran1(&idum) * box_side;
 
-		// It is not correct, but it does not matter at all, since it will be checked only in the first dt.
-		particles[i].c_x = particles[i].r_x;
-		particles[i].c_y = particles[i].r_y;
 
+		// Rotation center ck
+		complex<double> rk(particles[i].r_x,particles[i].r_y);
+		complex<double> vel(cos(particles[i].theta),sin(particles[i].theta));
+		complex<double> ck( std::real(rk)- (std::imag(vel)/ particles[i].w), std::imag(rk) + ( std::real(vel) / particles[i].w));
 
-		d_theta.push_back(omega0);		
+		// Allocating memory
+		cc[i] = ck;
 
-		//std::cout << "id: " << i << "  x: " << particle.r_x << "  y: " << particle.r_y << std::endl;
+		d_theta[i] = omega0;		
 	}
 }
 
 
 
+PCOD::PCOD(int N_, double M_, double omega0_, double h_){
+	init(N_, M_, omega0_, h_);
+}
+
+
 void PCOD::step_forward(){
 	
 	int j,i;
-    
+	
 	int index = 0;
 	for(i=1; i<=NE; i+=3){
 		x[i]=particles[index].theta;
@@ -317,46 +289,47 @@ void PCOD::step_forward(){
 	}
 
 	for(j=1;j<=NE;j++)
-		y[j]=x[j];
-	   
-	derivs(y,df, particles);
+			y[j]=x[j];
 
+	derivs(y,df); 
+
+	// k1 is a
 	for(j=1;j<=NE;j++){
 		a[j]=h*df[j];
 		y[j]=x[j]+a[j]/2.0;
 	}
 
-	derivs(y,df, particles);
+	derivs(y,df);
 
+	// k2 is b
 	for(j=1;j<=NE;j++){
 		b[j]=h*df[j];
 		y[j]=x[j]+b[j]/2.0;
 	}
 
-	derivs(y,df, particles);
+	derivs(y,df);
 
+	// k3 is c
 	for(j=1;j<=NE;j++){
 		c[j]=h*df[j];
 		y[j]=x[j]+c[j];
 	}
 
-	derivs(y,df, particles);
+	derivs(y,df);
 
-
-
+	// k4 is h*df[j]
 	for(j=1;j<=NE;j++)
 		x[j]=x[j]+(a[j]+h*df[j])/6.0+(b[j]+c[j])/3.0;
 
-
 	index = 0;
 	for(i=1; i<=NE; i+=3){
+
 		particles[index].theta = x[i];
 		particles[index].r_x = x[i+1];
 		particles[index].r_y = x[i+2];
 
-		// Updating the output for the ALF
+		// Updating the derivative output for mobile robots
 		d_theta[index] = (  (a[i]+h*df[i])/6.0+(b[i]+c[i])/3.0  ) / h;
-
 
 		if(particles[index].theta > Pi_2)
 			particles[index].theta -= Pi_2;
@@ -364,12 +337,26 @@ void PCOD::step_forward(){
 			particles[index].theta += Pi_2;
 
 		++index;
-	}
-
-		//std::cout << "\nid: " << i << "  x: " << particles[i].r_x << "  y: " << particles[i].r_y << "  theta: " << (particles[i].theta/M_PI) * 180.0 << std::endl;			
+	}		
 	
 	t=t+h;
 	it++;
+}
+
+
+
+// Getters
+double PCOD::get_h(){
+	return h;
+}
+
+
+int PCOD::get_ticks(){
+	return it;
+}
+
+double PCOD::get_t(){
+	return t;
 }
 
 
@@ -379,6 +366,7 @@ void PCOD::destroy(){
 	// Free memmory
 	delete P;
 	delete cc;
+	delete d_theta;
 	free_dvector(y,1,NE+2);
 	free_dvector(df,1,NE+2); 
 
