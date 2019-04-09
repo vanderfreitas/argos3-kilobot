@@ -18,8 +18,15 @@
 
 
 
+
 double two_pi = 2.0*M_PI;
 double half_pi = M_PI / 2.0;
+
+
+// PÌD regulator
+double keep_angle_in_interval(double phi){
+	return atan2(sin(phi), cos(phi) );
+}
 
 
 
@@ -41,6 +48,8 @@ void CALF::Init(TConfigurationNode& t_node) {
 
     /* Get the initial kilobots' states */
     SetupInitialKilobotsStates();
+
+
 
 
     // Open a log file
@@ -203,6 +212,18 @@ void CALF::SetupInitialKilobotsStates(){
     		pcod_model.particles[it].theta -= two_pi;
     }
 	printf("\n");
+
+
+
+	// PÌD regulator initialization
+    pid_reg = new pid_regulator[N];
+    for(int i=0; i<N; ++i){
+    	pid_reg[i].e_d = 0.0;
+    	pid_reg[i].e = 0.0;
+    	pid_reg[i].e_i = 0.0;
+    	pid_reg[i].dt = dt;
+    }
+
 	
 }
 
@@ -258,6 +279,16 @@ void CALF::GetExperimentVariables(TConfigurationNode& t_tree){
 /****************************************/
 
 void CALF::UpdateVirtualSensors(){
+
+	// One must receive the sensor readings and compare with the model's in order to correctly update the system.
+	// PID controller.
+
+	//double reference = pcod_model.particles[it].theta
+
+    //double inc = pid.calculate(0, reference);
+
+
+
 
 	// Update the theta vector
 	for(UInt16 it=0;it< m_tKilobotsEntities.size();it++){

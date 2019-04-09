@@ -19,6 +19,11 @@
         <kilobot_controller id="listener">
             <actuators>
                 <differential_steering implementation="default" />
+                <!-- differential_steering implementation="default"
+                                bias_avg="0.00015"
+                                bias_stddev="0.00270"
+                                factor_avg="1"
+                                factor_stddev="0.00010" / -->
                 <kilobot_led implementation="default" />
             </actuators>
             <sensors>
@@ -49,7 +54,7 @@
             environmentplotupdatefrequency="10"
             timeforonemessage="0.05"
 	    	M="3"
-	    	omega0="1.0">
+	    	omega0="1.5">
         </variables>
     
         <environments>

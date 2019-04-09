@@ -59,6 +59,21 @@ class CSimulator;
 using namespace argos;
 
 
+struct pid_regulator{
+    double Kp=1.0;
+    double Ki=0.0;
+    double Kd=0.0;
+    double dt;
+
+    double e;
+    double e_d;
+    double e_i;
+
+    double val;
+};
+
+
+
 class CALF : public CLoopFunctions
 {
 
@@ -227,6 +242,7 @@ private:
 	PCOD pcod_model;
 	PCOD pcod_model_2;
 
+    pid_regulator *pid_reg;
 
 
 	/* PCOD model */
