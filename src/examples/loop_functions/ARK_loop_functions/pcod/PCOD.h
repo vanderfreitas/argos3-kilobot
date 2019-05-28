@@ -94,6 +94,9 @@ public:
 	// Public access attributes --- Ok, It is not a good idea, but let's do it for now =)
 	particle_ *particles;
 	double *d_theta;
+	complex<double> *cc;
+
+	double v=0.00997009; //  0.1; //  0.009985; //0.00302;
 
 
 protected:
@@ -126,7 +129,7 @@ protected:
 
 	// ----------- PCOD model attributes -----------
 	double *P;
-	complex<double> *cc;
+	
 	// --------------------------------------------
 
 

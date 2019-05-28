@@ -5,7 +5,7 @@
     <!-- * General configuration * -->
     <!-- ************************* -->
     <framework>
-        <system threads="4" />
+        <system threads="0" />
         <experiment length="0"
         ticks_per_second="10"
         random_seed="124" />
@@ -50,11 +50,11 @@
         
         <variables
             datafilename="data_file.txt"
-            dataacquisitionfrequency="100"
+            dataacquisitionfrequency="10"
             environmentplotupdatefrequency="10"
             timeforonemessage="0.05"
 	    	M="3"
-	    	omega0="1.5">
+	    	omega0="0.05">
         </variables>
     
         <environments>
@@ -96,7 +96,7 @@
 
 	<!-- kilobot id="kb0">
           <controller config="listener"/> <dynamics2d friction="0.7" />
-	  <body position="0.0,0.5,0" orientation="270,0,0" />
+	  <body position="0.0,0.0,0" orientation="270,0,0" />
         </kilobot -->
 
 	<!-- kilobot id="kb1">

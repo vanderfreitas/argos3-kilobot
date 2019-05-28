@@ -104,7 +104,7 @@ void PCOD::rotation_center(double *state){
 		
 		complex<double> rk(r_x,r_y);
 		complex<double> vel(cos(theta),sin(theta));
-		complex<double> ck( std::real(rk)- (std::imag(vel)/ particles[index_c].w), std::imag(rk) + ( std::real(vel) / particles[index_c].w));
+		complex<double> ck( std::real(rk)- ( (std::imag(vel) * v) / (particles[index_c].w )), std::imag(rk) + ( (std::real(vel) * v) / (particles[index_c].w ) ));
 
 		cc[index_c] = ck;
 
@@ -155,7 +155,6 @@ double PCOD::uk_circular_symmetric_paley_all_to_all(double state[], double theta
 
 
 
-
 // --------- Numerical Integration -------------------------------
 void PCOD::nrerror(char error_text[]){
 	fprintf(stderr,"Numerical Recipes run-time error...\n");
@@ -172,11 +171,11 @@ void PCOD::derivs(double y[],double df[]){
 
 	for(i=1; i<=NE; i+=3){
 		df[i]=uk_circular_symmetric_paley_all_to_all(y, y[i], index);
-		df[i+1]=cos(y[i]);
-		df[i+2]=sin(y[i]);
+		df[i+1]=v*cos(y[i]);
+		df[i+2]=v*sin(y[i]);
 
 		++index;
-	}	
+	}
 }
 
 double *PCOD::dvector(long nl,long nh){
@@ -211,7 +210,7 @@ void PCOD::init(int N_, double M_, double omega0_, double h_){
 	K_m = 0.18;
 	K_M = -0.02;
 
-	K = 0.3;
+	K = 10.0; //0.3;
 
 	particles = new particle_[N];
 

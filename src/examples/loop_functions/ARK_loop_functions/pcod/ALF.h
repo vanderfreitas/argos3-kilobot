@@ -65,11 +65,12 @@ struct pid_regulator{
     double Kd=0.0;
     double dt;
 
+    double former_e;
     double e;
     double e_d;
     double e_i;
 
-    double val;
+    double omega;
 };
 
 
