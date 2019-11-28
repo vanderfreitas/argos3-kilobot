@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Compiling the code
 
 Make sure you have ARGoS >= 3.0.0-beta52 installed!
@@ -86,3 +87,7 @@ argos3 -c src/examples/experiments/kilobot_sync.argos
       * Robots can push other objects
     * Communication considers obstruction
     * Message drop considers local density
+=======
+# argos3_kilobot_pcod
+PCOD model deployed on simulated Kilobots
+>>>>>>> upstream/master
