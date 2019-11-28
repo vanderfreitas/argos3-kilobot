@@ -8,6 +8,7 @@
  * IEEE Robotics and Automation Letters, 2(3), 1755–1761. https://doi.org/10.1109/LRA.2017.2700059
  *
  * @author Mohamed Salaheddine Talamali <mstalamali1@sheffield.ac.uk>
+ * @author Vander Freitas <vandercomp@gmail.com>
  */
 
 
@@ -39,7 +40,6 @@ class CSimulator;
 #include <argos3/core/simulator/entity/embodied_entity.h>
 #include <argos3/core/simulator/entity/composable_entity.h>
 #include <argos3/plugins/simulator/entities/led_equipped_entity.h>
-//#include <argos3/core/simulator/entity/floor_entity.h>
 
 #include <argos3/plugins/robots/kilobot/simulator/kilobot_entity.h>
 #include <argos3/plugins/robots/kilobot/simulator/kilobot_communication_entity.h>
@@ -53,25 +53,8 @@ class CSimulator;
 
 #include <array>
 
-#include "PCOD.h"
-
 
 using namespace argos;
-
-
-struct pid_regulator{
-    double Kp=1.0;
-    double Ki=0.0;
-    double Kd=0.0;
-    double dt;
-
-    double former_e;
-    double e;
-    double e_d;
-    double e_i;
-
-    double omega;
-};
 
 
 
@@ -237,27 +220,11 @@ private:
 
 
     /************************************/
-    /*             PCOD model           */
+    /*       Robots state vector        */
     /************************************/
-
-	PCOD pcod_model;
-	PCOD pcod_model_2;
-
-    pid_regulator *pid_reg;
-
-
-	/* PCOD model */
-	//std::vector<double> theta; // Robot phases
-	std::vector<double> theta_aux; //Testing the model. 
-	//std::vector<double> d_theta;
-	UInt16 N;
-	UInt16 M;
-	double K;
-	double dt;
-	double omega0;
-
-	//Real uk_Kuramoto(double theta_k);
-	//Real uk_Kuramoto_aux(double theta_aux_k);
+    double *state_vector; // states
+    int sv_id; // states indexes for each robot
+    int N; // number of robots
 };
 
 

@@ -13,20 +13,17 @@
  * 
  */
 
+
+
 #include "ALF.h"
 
 
+#include <math.h>
+#include <numeric>
+#include <complex>
+#include <cmath>
+#include <iomanip>
 
-
-
-double two_pi = 2.0*M_PI;
-double half_pi = M_PI / 2.0;
-
-
-// PÌD regulator
-double keep_angle_in_interval(double phi){
-	return atan2(sin(phi), cos(phi) );
-}
 
 
 
@@ -49,9 +46,6 @@ void CALF::Init(TConfigurationNode& t_node) {
     /* Get the initial kilobots' states */
     SetupInitialKilobotsStates();
 
-
-
-
     // Open a log file
     m_cOutput.open(m_strOutputFileName, std::ios_base::trunc | std::ios_base::out);
 }
@@ -70,76 +64,55 @@ void CALF::Destroy() {
     /* Close data file */
     m_cOutput.close();
 
-	pcod_model.destroy();
+	//pcod_model.destroy();
 }
 
 
 void CALF::PreStep(){
-
+   
     /* Update the time variable required for the experiment (in sec)*/
     m_fTimeInSeconds=GetSpace().GetSimulationClock()/CPhysicsEngine::GetInverseSimulationClockTick();
 
-	//if((int)m_fTimeInSeconds % 100 == 0){  // update model at each 10s.
- 		
 
-	//CVector2 cKilobotPosition0=GetKilobotPosition(*m_tKilobotsEntities[0]);
-    //CVector2 cKilobotPosition1=GetKilobotPosition(*m_tKilobotsEntities[1]);
-    //CVector2 cKilobotPosition2=GetKilobotPosition(*m_tKilobotsEntities[2]);
+    // Exporting final result
+    if(m_fTimeInSeconds == 4999.0){
+    	int N = m_tKilobotsEntities.size();
+    	int M = m_tKilobotsEntities.size();
 
-	//printf("time pcod=%f   time kilobot=%f   r1=(%f,%f)  r1_kilo=(%f,%f) \n", pcod_model.get_t(),m_fTimeInSeconds, 
-     //                                            pcod_model.particles[0].r_x, pcod_model.particles[0].r_y, 
-    //                                             cKilobotPosition0.GetX(), cKilobotPosition0.GetY());
+        double pmt[M];
+        double theta[N];
 
-
-	//printf("time pcod=%f   time kilobot=%f  r1_kilo_ori=(%f,%f) \n", pcod_model.get_t(),m_fTimeInSeconds,cKilobotPosition0.GetX(), cKilobotPosition0.GetY());
-	
+        for(UInt16 it=0;it< m_tKilobotsEntities.size();it++)
+            theta[it] = GetKilobotOrientation(*m_tKilobotsEntities[it]).GetValue();
 
 
-
-    pcod_model.step_forward();
-
-
-        
-
-        //printf("time pcod=%f   time kilobot=%f   c1=(%f,%f)  c2=(%f,%f)  c3=(%f,%f)\n", pcod_model.get_t(),m_fTimeInSeconds, 
-        //                                                 std::real(pcod_model.cc[0]), std::imag(pcod_model.cc[0]), 
-        //                                                 std::real(pcod_model.cc[1]), std::imag(pcod_model.cc[1]),
-        //                                                 std::real(pcod_model.cc[2]), std::imag(pcod_model.cc[2]));
-
-
-        CVector2 cKilobotPosition;
-    for(UInt16 it=0;it< m_tKilobotsEntities.size();it++){    
-        // Heading angle transformation is necessary
-        if(pcod_model.particles[it].theta < 0.0)
-            pcod_model.particles[it].theta += two_pi;
-        else if(pcod_model.particles[it].theta > two_pi)
-            pcod_model.particles[it].theta -= two_pi;
-
-
-        cKilobotPosition=GetKilobotPosition(*m_tKilobotsEntities[it]);
-
-        //pcod_model.particles[it].r_x = cKilobotPosition.GetX();
-        //pcod_model.particles[it].r_y = cKilobotPosition.GetY();
-
-    	
-        double theta = GetKilobotOrientation(*m_tKilobotsEntities[it]).GetValue();
-        double v=0.00997009;
-		complex<double> rk(cKilobotPosition.GetX(),cKilobotPosition.GetY());
-		complex<double> vel(cos(theta),sin(theta));
-		complex<double> ck( std::real(rk) - ( (std::imag(vel) * v) / (pcod_model.particles[it].w )), std::imag(rk) + ( (std::real(vel) * v) / (pcod_model.particles[it].w ) ));
+        std::complex<double> res = 0.0;
+		int i, m;
 	    
+	    // M-th moment of the order parameter
+		for(m=1; m<=M; ++m){
+			res = 0.0;
+			for(i=0; i<N; ++i){		
+				std::complex<double> aux(cos((double)m*theta[i]), sin((double)m*theta[i]));
+				res += aux;
+			}
+			res = res / double(N);
 
-		printf("it=%d  time pcod=%f   time kilobot=%f   c1=(%f,%f)  c1_kilo=(%f,%f) \n", it, pcod_model.get_t(),m_fTimeInSeconds, 
-	                                                 std::real(pcod_model.cc[it]), std::imag(pcod_model.cc[it]), 
-	                                                 std::real(ck), std::imag(ck));
-		
+			pmt[m-1] = sqrt(std::real(res)*std::real(res) + std::imag(res)*std::imag(res));
+		}
+
+
+        m_cOutput << pmt[0];
+        std::cout << pmt[0];
+        for(int i=1; i<M; ++i){
+            m_cOutput << "\t" << pmt[i];
+            std::cout << "\t" << pmt[i];
+        }
+        m_cOutput << "\n";
+        std::cout << "\n";
     }
 
 
-        
-
-
-    //}
 
     /* Update the virtual sensor of the kilobots*/
     UpdateVirtualSensors();
@@ -148,34 +121,9 @@ void CALF::PreStep(){
 
 void CALF::PostStep(){
 
-	
-	/*if(pcod_model.get_ticks() % 10 == 0){
-		for(int i=0; i<N; ++i)
-			m_cOutput << m_fTimeInSeconds << "\t" << i << "\t" << pcod_model.particles[i].r_x << "\t" << pcod_model.particles[i].r_y << "\t" << pcod_model.particles[i].theta << "\n";
-	}*/
-
-
-
-//    /*  experiment's results*/
-//    if(((UInt16)m_fTimeInSeconds%m_unDataAcquisitionFrequency==0)&&((m_fTimeInSeconds-(UInt16)m_fTimeInSeconds)==0)){
-
-//        m_cOutput << (UInt16) m_fTimeInSeconds << '\t';
-
-//        UInt16 unKilobotID;
-//        CVector2 cKilobotPosition;
-
-//        for(UInt16 it=0;it< m_tKilobotsEntities.size();it++){
-
-//            unKilobotID=GetKilobotId(*m_tKilobotsEntities[it]);
-//            cKilobotPosition=GetKilobotPosition(*m_tKilobotsEntities[it]);
-
-//            m_cOutput << unKilobotID << '\t' << cKilobotPosition.GetX() << '\t' << cKilobotPosition.GetY() << '\t' << (UInt16)m_vecHasFood[unKilobotID] << '\t';
-
-//        }
-
-//        m_cOutput << std::endl;
-//    }
 }
+
+
 /****************************************/
 /*      Kilobot Tracking Function       */
 /****************************************/
@@ -236,56 +184,32 @@ void CALF::SetupInitialKilobotsStates(){
 
     tKilobotsStates.resize(m_tKilobotsEntities.size());
     tLastTimeMessaged.resize(m_tKilobotsEntities.size());
-    MinTimeBetweenTwoMsg = Max<Real>(1.0, m_tKilobotsEntities.size()*m_fTimeForAMessage/3.0);
+    MinTimeBetweenTwoMsg = m_tKilobotsEntities.size()*m_fTimeForAMessage/3.0; // Max<Real>(1.0, m_tKilobotsEntities.size()*m_fTimeForAMessage/3.0);
 
+    printf("MinTimeBetweenTwoMsg = %f   \n", MinTimeBetweenTwoMsg);
 
     // Initalize PCOD
 	N = m_tKilobotsEntities.size();
 
-	dt = 1.0 / CPhysicsEngine::GetInverseSimulationClockTick();
-	//dt = dt / 10.0;
-
-	printf("dt = %f \n", dt);
-	printf("N = %d  M = %d  omega0 = %f \n\n", N, M, omega0);
-	printf("MinTimeBetweenTwoMsg = %f  time_for_a_msg__X__N_over_3: %f \n", MinTimeBetweenTwoMsg, m_tKilobotsEntities.size()*m_fTimeForAMessage/3.0);
-	
-	// Initiating the pcod model
-	pcod_model.init(N, M, omega0, dt);
+    // The state vector stores: robot_phase, theta_1, theta_2,.., theta_N, r1(x),..,rN(x), r1(y),..,rN(y)
+    state_vector = new double[3*m_tKilobotsEntities.size()]; 
+    sv_id = 0;
 
 
 	CVector2 cKilobotPosition;
-
-	printf("Initial phases: ");
 
     for(UInt16 it=0;it< m_tKilobotsEntities.size();it++){
         /* Setup the virtual states of a kilobot(e.g. has food state)*/
         SetupInitialKilobotState(*m_tKilobotsEntities[it]);
 
     	cKilobotPosition=GetKilobotPosition(*m_tKilobotsEntities[it]);
-    	pcod_model.particles[it].r_x = cKilobotPosition.GetX();
-    	pcod_model.particles[it].r_y = cKilobotPosition.GetY(); //-cKilobotPosition.GetY();
-    	pcod_model.particles[it].theta = GetKilobotOrientation(*m_tKilobotsEntities[it]).GetValue() + 0.3*M_PI; // + half_pi; // + 0.3 * M_PI;
-        //pcod_model.particles[it].theta = M_PI - 0.1;
 
-    	if(pcod_model.particles[it].theta < 0.0)
-    		pcod_model.particles[it].theta += two_pi;
-    	else if(pcod_model.particles[it].theta > two_pi)
-    		pcod_model.particles[it].theta -= two_pi;
+        // Filling state vector
+        state_vector[it] = GetKilobotOrientation(*m_tKilobotsEntities[it]).GetValue();
+        state_vector[it+N] =  cKilobotPosition.GetX();
+        state_vector[it+2*N] = cKilobotPosition.GetY();
+
     }
-	printf("\n");
-
-
-
-	// PÌD regulator initialization
-    pid_reg = new pid_regulator[N];
-    for(int i=0; i<N; ++i){
-    	pid_reg[i].e_d = 0.0;
-    	pid_reg[i].e = 0.0;
-    	pid_reg[i].e_i = 0.0;
-    	pid_reg[i].dt = dt;
-    }
-
-	
 }
 
 void CALF::SetupInitialKilobotState(CKilobotEntity &c_kilobot_entity){
@@ -324,15 +248,6 @@ void CALF::GetExperimentVariables(TConfigurationNode& t_tree){
 
     /* Get the time for one kilobot message */
     GetNodeAttributeOrDefault(tExperimentVariablesNode, "timeforonemessage", m_fTimeForAMessage, m_fTimeForAMessage);
-
-    /* Get the model parameters */
-    GetNodeAttributeOrDefault(tExperimentVariablesNode, "omega0", omega0, omega0);
-
-    GetNodeAttributeOrDefault(tExperimentVariablesNode, "M", M, M);
-
-
-    
-
 }
 
 /****************************************/
@@ -341,47 +256,30 @@ void CALF::GetExperimentVariables(TConfigurationNode& t_tree){
 
 void CALF::UpdateVirtualSensors(){
 
-	// One must receive the sensor readings and compare with the model's in order to correctly update the system.
-	// PID controller.
-
-	//double reference = pcod_model.particles[it].theta
-
-    //double inc = pid.calculate(0, reference);
-
-
-
 
 	// Update the theta vector
 	for(UInt16 it=0;it< m_tKilobotsEntities.size();it++){
-        double pcod_model_bounded_theta = keep_angle_in_interval(pcod_model.particles[it].theta);
-        double argos_bounded_theta = keep_angle_in_interval(GetKilobotOrientation(*m_tKilobotsEntities[it]).GetValue());
-
-		//pid_reg[it].former_e = pid_reg[it].e;
-		pid_reg[it].e = keep_angle_in_interval(pcod_model_bounded_theta - argos_bounded_theta);
-		//pid_reg[it].e = keep_angle_in_interval(pid_reg[it].e);
-
-
-		//if(it == 0){
-			//printf("ALF:  theta=%f  theta_r=%f \n", keep_angle_in_interval(pcod_model.particles[it].theta), keep_angle_in_interval(GetKilobotOrientation(*m_tKilobotsEntities[it]).GetValue() + half_pi));
-			printf("%d\t%f\t%f\n", GetSpace().GetSimulationClock(), pcod_model_bounded_theta, argos_bounded_theta);
-		//}
-
-        
-
-		//pcod_model.particles[it].theta = keep_angle_in_interval(pcod_model.particles[it].theta);
+        // Keep angle within the interval [-pi, pi)
+        double argos_bounded_theta = atan2(sin(GetKilobotOrientation(*m_tKilobotsEntities[it]).GetValue()), cos(GetKilobotOrientation(*m_tKilobotsEntities[it]).GetValue()) );  
 
 		// Coordinate transformation is necessary
-		//CVector2 cKilobotPosition;
-		//cKilobotPosition=GetKilobotPosition(*m_tKilobotsEntities[it]);
-		//pcod_model.particles[it].r_x = -cKilobotPosition.GetY();
-		//pcod_model.particles[it].r_y = cKilobotPosition.GetX();
-	}
+		CVector2 cKilobotPosition;
+		cKilobotPosition=GetKilobotPosition(*m_tKilobotsEntities[it]);
 
+        // Filling state vector
+        state_vector[it] = argos_bounded_theta;
+        state_vector[it+N] = cKilobotPosition.GetX();
+        state_vector[it+2*N] = cKilobotPosition.GetY();
+	}
 
 	for(UInt16 it=0;it< m_tKilobotsEntities.size();it++){
 		/* Update the virtual sensor of a kilobot based on its current state */
 		UpdateVirtualSensor(*m_tKilobotsEntities[it]);
 	}
+
+	++sv_id;
+    if(sv_id > 2)
+        sv_id = 0;
 }
 
 
@@ -400,7 +298,7 @@ UInt8 convert_double_to_UInt8_(double angle, int num_digits){
 void CALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity){
 
     /*Create ARK-type messages variables*/
-    m_tALFKilobotMessage tKilobotMessage,tEmptyMessage,tMessage;
+    m_tALFKilobotMessage tMessage, tKilobotMessage_theta, tKilobotMessage_x, tKilobotMessage_y;
 
     /* Flag for existance of message to send*/
     bool bMessageToSend=false;
@@ -413,48 +311,92 @@ void CALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity){
         return; // if the time is too short, the kilobot cannot receive a message
     }
     else{
-		// Error derivative
-		//pid_reg[unKilobotID].e_d = (pid_reg[unKilobotID].e - pid_reg[unKilobotID].former_e)*pid_reg[unKilobotID].dt;
-		// Error integral
-		//pid_reg[unKilobotID].e_i += pid_reg[unKilobotID].e*pid_reg[unKilobotID].dt;
-		// PID regulator
-		//pid_reg[unKilobotID].omega = pid_reg[unKilobotID].Kp*pid_reg[unKilobotID].e 
-		//                           + pid_reg[unKilobotID].Ki*pid_reg[unKilobotID].e_i 
-		//                           + pid_reg[unKilobotID].Kd*pid_reg[unKilobotID].e_d;
+    	int index_to_be_sent = 0;
 
-        /*  Prepare the inividual kilobot's message */
-        tKilobotMessage.m_sID = unKilobotID;
+    	// The id of the robot state we are sending info. (to to whom we are sending to)
+    	if(sv_id == 0){ //left neighbor
+			if(unKilobotID > 0)
+				index_to_be_sent = unKilobotID - 1;
+			else 
+				index_to_be_sent = m_tKilobotsEntities.size()-1;
 
-        // Convert the angle derivative (double) into a integer of 4 digits. 
-        // Since the payload is composed of one type of 4 bits and a payload (data) of 10 bits, 
-        // we pack one digit in the type and the other 3 in the payload
+    	}else if(sv_id == 1){ // Own state
+    		index_to_be_sent = unKilobotID;
 
-        // First digit
-        //tKilobotMessage.m_sType = fabs(pid_reg[unKilobotID].e*pow(10,0)); //fabs(pid_reg[unKilobotID].omega*pow(10,0)); 
-
-
+    	}else if(sv_id == 2){ // Right neighbor
+    		if(unKilobotID < m_tKilobotsEntities.size()-1)
+				index_to_be_sent = unKilobotID + 1;
+			else 
+				index_to_be_sent = 0;
+    	}
 
 
-        if(pid_reg[unKilobotID].e > 0)
-        	tKilobotMessage.m_sType = 0;
+    	/*  Prepare the inividual kilobot's message */
+        tKilobotMessage_theta.m_sID = index_to_be_sent;
+        double data_to_be_sent = state_vector[index_to_be_sent];
+
+        // Signal check
+        if(data_to_be_sent > 0)
+        	tKilobotMessage_theta.m_sType = 0;
         else
-        	tKilobotMessage.m_sType = 1;
-
-
+        	tKilobotMessage_theta.m_sType = 1;
 
         // Next 3 digits
-        pid_reg[unKilobotID].e /= 10.0;
-        long next_3_digits = fabs(pid_reg[unKilobotID].e*pow(10,3));
+        data_to_be_sent /= 10.0;
+        long next_3_digits = fabs(data_to_be_sent*pow(10,3));
         next_3_digits = next_3_digits % (int)pow(10,3);
-        tKilobotMessage.m_sData = next_3_digits;
+        tKilobotMessage_theta.m_sData = next_3_digits;
+
+
+
+
+        /*  Prepare the inividual kilobot's message */
+        int index = index_to_be_sent + N;
+        if(index >= 3*N)
+            index -= 3*N;
+
+        tKilobotMessage_x.m_sID = index;
+        data_to_be_sent = state_vector[index];
+
+        // Signal check
+        if(data_to_be_sent > 0)
+            tKilobotMessage_x.m_sType = 0;
+        else
+            tKilobotMessage_x.m_sType = 1;
+
+        // Next 3 digits
+        data_to_be_sent /= 10.0;
+        next_3_digits = fabs(data_to_be_sent*pow(10,3));
+        next_3_digits = next_3_digits % (int)pow(10,3);
+        tKilobotMessage_x.m_sData = next_3_digits;
+
+
+
+
+        /*  Prepare the inividual kilobot's message */
+        index = index_to_be_sent + 2*N;
+        if(index >= 3*N)
+            index -= 3*N;
+        tKilobotMessage_y.m_sID = index;
+        data_to_be_sent = state_vector[index];
+
+
+        // Signal check
+        if(data_to_be_sent > 0)
+            tKilobotMessage_y.m_sType = 0;
+        else
+            tKilobotMessage_y.m_sType = 1;
+
+        // Next 3 digits
+        data_to_be_sent /= 10.0;
+        next_3_digits = fabs(data_to_be_sent*pow(10,3));
+        next_3_digits = next_3_digits % (int)pow(10,3);
+        tKilobotMessage_y.m_sData = next_3_digits;
 
 
 
         // The problem that arise here is the sign of the theta derivative. It depends on the omega parameter and its sign follow it accordingly.
         // One strategy would be to let the robot know it already from the beginning of the simulation, since one cannot send it all the time.
-
-
-        //printf("time=%f  e=%f \n",m_fTimeInSeconds,pid_reg[unKilobotID].e);
 
         /*  Set the message sending flag to True */
         bMessageToSend=true;
@@ -464,26 +406,21 @@ void CALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity){
 
     /* Send the message to the kilobot using the ARK messaging protocol (addressing 3 kilobots per one standard kilobot message)*/
     if(bMessageToSend){
-
-        //printf("SEND: %f\n",pid_reg[unKilobotID].e);
-
         for (int i = 0; i < 9; ++i) {
             m_tMessages[unKilobotID].data[i]=0;
         }
 
         m_tMessages[unKilobotID].type = 0;
-        // Prepare an empty ARK-type message to fill the gap in the full kilobot message
-        tEmptyMessage.m_sID=1023;
-        tEmptyMessage.m_sType=0;
-        tEmptyMessage.m_sData=0;
 
         // Fill the kilobot message by the ARK-type messages
         for (int i = 0; i < 3; ++i) {
 
             if(i==0){
-                tMessage=tKilobotMessage;
-            } else{
-                tMessage=tEmptyMessage;
+                tMessage=tKilobotMessage_theta;
+            }else if(i==1){
+                tMessage=tKilobotMessage_x;
+            }else if(i==2){
+                tMessage=tKilobotMessage_y;
             }
 
             m_tMessages[unKilobotID].data[i*3] = (tMessage.m_sID >> 2);
@@ -506,11 +443,6 @@ void CALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity){
 /****************************************/
 /* Here Goes the user created functions */
 /****************************************/
-
-
-
-
-
 
 
 

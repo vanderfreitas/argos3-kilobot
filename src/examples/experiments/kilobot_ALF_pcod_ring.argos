@@ -5,10 +5,10 @@
     <!-- * General configuration * -->
     <!-- ************************* -->
     <framework>
-        <system threads="0" />
-        <experiment length="0"
+        <system threads="4" />
+        <experiment length="5000"
         ticks_per_second="10"
-        random_seed="124" />
+        random_seed="0" />
     </framework>
     
     <!-- *************** -->
@@ -18,18 +18,18 @@
         
         <kilobot_controller id="listener">
             <actuators>
-                <differential_steering implementation="default" />
-                <!-- differential_steering implementation="default"
-                                bias_avg="0.00015"
-                                bias_stddev="0.00270"
-                                factor_avg="1"
-                                factor_stddev="0.00010" / -->
+                <!-- differential_steering implementation="default" / -->
+                <differential_steering implementation="default"
+                                bias_avg="-0.00075"
+                                bias_stddev="0.00196"
+                                factor_avg="1.0"
+                                factor_stddev="0.00001" />
                 <kilobot_led implementation="default" />
             </actuators>
             <sensors>
                 <kilobot_communication implementation="default" medium="kilocomm" show_rays="false" />
             </sensors>
-            <params behavior="build/examples/behaviors/pcod" />
+            <params behavior="build/examples/behaviors/pcod_network" />
         </kilobot_controller>
         
     </controllers>
@@ -52,9 +52,7 @@
             datafilename="data_file.txt"
             dataacquisitionfrequency="10"
             environmentplotupdatefrequency="10"
-            timeforonemessage="0.05"
-	    	M="3"
-	    	omega0="0.05">
+            timeforonemessage="0.05">
         </variables>
     
         <environments>
@@ -94,57 +92,7 @@
             </entity>
         </distribute>
 
-	<!-- kilobot id="kb0">
-          <controller config="listener"/> <dynamics2d friction="0.7" />
-	  <body position="0.0,0.0,0" orientation="270,0,0" />
-        </kilobot -->
-
-	<!-- kilobot id="kb1">
-          <controller config="listener"/>
-	  <body position="-1.0,0.5,0" orientation="90,0,0" />
-        </kilobot -->
-
-
-	<!-- kilobot id="kb0">
-          <controller config="listener"/> 
-	  <body position="0.0,0.0,0" orientation="270,0,0" />
-        </kilobot>
-
-	<kilobot id="kb1">
-          <controller config="listener"/> 
-	  <body position="0.1,0.5,0" orientation="90,0,0" />
-        </kilobot>
-
-	<kilobot id="kb2">
-          <controller config="listener"/> 
-	  <body position="0.3,0.7,0" orientation="270,0,0" />
-        </kilobot>
-
-	<kilobot id="kb3">
-          <controller config="listener"/> 
-	  <body position="-0.1,-0.3,0" orientation="300,0,0" />
-        </kilobot -->
-
-
-	<!-- 270, 180, 90 -->
-
-	<!-- kilobot id="kb0">
-          <controller config="listener"/> <dynamics2d friction="0.7" />
-	  <body position="0.0,0.5,0" orientation="270,0,0" />
-        </kilobot>
-
-
-	<kilobot id="kb1">
-          <controller config="listener"/>
-	  <body position="0,-0.5,0" orientation="180,0,0" />
-        </kilobot>
-
-
-	<kilobot id="kb2">
-          <controller config="listener"/>
-	  <body position="-0.5,0,0" orientation="90,0,0" />
-        </kilobot -->
-        
+	
     </arena>
     
     <!-- ******************* -->
